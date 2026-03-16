@@ -4,6 +4,7 @@
 // the feature `offset_of` has been stable since 1.77.0 and no longer requires an attribute to
 // enable
 
+use core::arch::asm;
 use core::mem::offset_of;
 use core::panic::PanicInfo;
 use core::ptr::null_mut;
@@ -21,7 +22,9 @@ fn efi_main(_image_handle: EfiHandle, efi_system_table: &EfiSystemTable) {
         *e = 0xffffff;
     }
     // println!("Hello, world!");
-    loop {}
+    loop {
+        hlt();
+    }
 }
 
 fn locate_graphic_protocol<'a>(
@@ -119,5 +122,12 @@ const _: () = assert!(size_of::<EfiGraphicsOutputProtocolPixelInfo>() == 36);
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
-    loop {}
+    loop {
+        hlt();
+    }
+}
+
+#[inline]
+fn hlt() {
+    unsafe { asm!("hlt") }
 }
