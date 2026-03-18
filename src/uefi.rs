@@ -140,11 +140,21 @@ pub enum EfiMemoryType {
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct EfiMemoryDescriptor {
-    pub memory_type: EfiMemoryType,
+    memory_type: EfiMemoryType,
     physical_start: u64,
     virtual_start: u64,
-    pub number_of_pages: u64,
+    number_of_pages: u64,
     attribute: u64,
+}
+
+impl EfiMemoryDescriptor {
+    pub fn memory_type(&self) -> EfiMemoryType {
+        self.memory_type
+    }
+
+    pub fn number_of_pages(&self) -> u64 {
+        self.number_of_pages
+    }
 }
 
 const MEMORY_MAP_BUFFER_SIZE: usize = 0x8000;
@@ -233,9 +243,15 @@ impl EfiBootServicesTable {
 #[repr(C)]
 pub struct EfiSystemTable {
     _reserved0: [u64; 12],
-    pub boot_services: &'static EfiBootServicesTable,
+    boot_services: &'static EfiBootServicesTable,
 }
 const _: () = assert!(offset_of!(EfiSystemTable, boot_services) == 96);
+
+impl EfiSystemTable {
+    pub fn boot_services(&self) -> &EfiBootServicesTable {
+        self.boot_services
+    }
+}
 
 const EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID: EfiGuid = EfiGuid {
     data0: 0x9042a9de,

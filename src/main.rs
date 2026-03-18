@@ -29,13 +29,13 @@ fn efi_main(image_handle: EfiHandle, efi_system_table: &EfiSystemTable) {
 
     let mut memory_map = MemoryMapHolder::new();
     let status = efi_system_table
-        .boot_services
+        .boot_services()
         .get_memory_map(&mut memory_map);
     writeln!(w, "{status:?}").unwrap();
     let mut total_memory_pages = 0;
     for e in memory_map.iter() {
-        if e.memory_type == EfiMemoryType::CONVENTIONAL_MEMORY {
-            total_memory_pages += e.number_of_pages;
+        if e.memory_type() == EfiMemoryType::CONVENTIONAL_MEMORY {
+            total_memory_pages += e.number_of_pages();
             writeln!(w, "{e:?}").unwrap();
         }
     }
