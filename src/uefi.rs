@@ -152,6 +152,10 @@ impl EfiMemoryDescriptor {
         self.memory_type
     }
 
+    pub fn physical_start(&self) -> u64 {
+        self.physical_start
+    }
+
     pub fn number_of_pages(&self) -> u64 {
         self.number_of_pages
     }
