@@ -9,6 +9,7 @@ use core::panic::PanicInfo;
 
 use my_wasabi_os::arch::x86::hlt;
 use my_wasabi_os::graphics::{Bitmap, draw_test_pattern, fill_rect};
+use my_wasabi_os::qemu::{QemuExitCode, exit_qemu};
 use my_wasabi_os::uefi::{
     EfiHandle, EfiMemoryType, EfiSystemTable, MemoryMapHolder, VramTextWriter,
     exit_from_efi_boot_services, init_vram,
@@ -56,7 +57,5 @@ fn efi_main(image_handle: EfiHandle, efi_system_table: &EfiSystemTable) {
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
-    loop {
-        hlt();
-    }
+    exit_qemu(QemuExitCode::Fail)
 }
