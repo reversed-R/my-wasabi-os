@@ -8,6 +8,7 @@ pub mod arch;
 pub mod graphics;
 pub mod qemu;
 pub mod result;
+pub mod serial;
 pub mod uefi;
 
 #[cfg(test)]
