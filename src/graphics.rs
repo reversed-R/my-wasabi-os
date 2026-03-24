@@ -1,4 +1,7 @@
-use core::cmp::min;
+use core::{
+    cmp::min,
+    sync::atomic::{AtomicUsize, Ordering},
+};
 
 use crate::result::Result;
 
@@ -139,32 +142,79 @@ fn draw_str_fg<T: Bitmap>(buf: &mut T, x: i64, y: i64, color: u32, s: &str) {
     }
 }
 
-fn lookup_font(c: char) -> Option<[[char; 8]; 16]> {
+// Rust Edition 2024 では static_mut_refs は
+// デフォルトで禁止されている
+//
+// #[allow(static_mut_refs)]
+// として無視すると、
+// 未定義動作がたしかに発生した
+// (lookup_font() 実行後に未定義動作以外で説明できないループに入る)
+//
+// https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html#no_std-one-time-initialization
+// にしたがい、FONT_CACHEの一度きりのキャッシュを
+// ロックを取って保存する
+const UNINITIALIZED: usize = 0;
+const INITIALIZING: usize = 1;
+const INITIALIZED: usize = 2;
+static STATE_INITIALIZED: AtomicUsize = AtomicUsize::new(UNINITIALIZED);
+static mut FONT_CACHE: [[[char; 8]; 16]; 256] = [[['*'; 8]; 16]; 256];
+fn init_font() {
     const FONT_SOURCE: &str = include_str!("./font.txt");
-    if let Ok(c) = u8::try_from(c) {
+
+    if STATE_INITIALIZED
+        .compare_exchange(
+            UNINITIALIZED,
+            INITIALIZING,
+            Ordering::SeqCst,
+            Ordering::SeqCst,
+        )
+        .is_ok()
+    {
+        let mut font = [[['*'; 8]; 16]; 256];
         let mut fi = FONT_SOURCE.split("\n");
         while let Some(line) = fi.next() {
             if let Some(line) = line.strip_prefix("0x")
                 && let Ok(idx) = u8::from_str_radix(line, 16)
             {
-                if idx != c {
-                    continue;
-                }
-                let mut font = [['*'; 8]; 16];
+                let mut glyph = [['*'; 8]; 16];
                 for (y, line) in fi.clone().take(16).enumerate() {
                     for (x, c) in line.chars().enumerate() {
-                        if let Some(e) = font[y].get_mut(x) {
+                        if let Some(e) = glyph[y].get_mut(x) {
                             *e = c;
                         }
                     }
                 }
 
-                return Some(font);
+                font[idx as usize] = glyph;
             }
         }
-    }
 
-    None
+        // SAFETY: The reads and writes to STATE are guarded with the INITIALIZED guard.
+        unsafe {
+            FONT_CACHE = font;
+        }
+        STATE_INITIALIZED.store(INITIALIZED, Ordering::SeqCst);
+    }
+}
+
+fn cached_font() -> &'static [[[char; 8]; 16]; 256] {
+    if STATE_INITIALIZED.load(Ordering::Acquire) != INITIALIZED {
+        panic!("not initialized");
+    } else {
+        // SAFETY: Mutable access is not possible after state has been initialized.
+        unsafe { &*&raw const FONT_CACHE }
+    }
+}
+
+fn lookup_font(c: char) -> Option<[[char; 8]; 16]> {
+    // 未初期化時のみ初期化する
+    init_font();
+
+    if let Ok(c) = u8::try_from(c) {
+        Some(cached_font()[c as usize])
+    } else {
+        None
+    }
 }
 
 pub fn draw_test_pattern<T: Bitmap>(buf: &mut T) {

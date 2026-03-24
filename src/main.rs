@@ -10,11 +10,21 @@ use core::panic::PanicInfo;
 use my_wasabi_os::arch::x86::hlt;
 use my_wasabi_os::graphics::{Bitmap, draw_test_pattern, fill_rect};
 use my_wasabi_os::init::init_basic_runtime;
+use my_wasabi_os::print::hexdump;
 use my_wasabi_os::qemu::{QemuExitCode, exit_qemu};
 use my_wasabi_os::uefi::{EfiHandle, EfiMemoryType, EfiSystemTable, VramTextWriter, init_vram};
+use my_wasabi_os::{error, info, println, warn};
 
 #[unsafe(no_mangle)]
 fn efi_main(image_handle: EfiHandle, efi_system_table: &EfiSystemTable) {
+    println!("Booting WasabiOS...");
+    println!("image_handle: {:#018X}", image_handle);
+    println!("efi_system_table: {:#p}", efi_system_table);
+    info!("info");
+    warn!("warn");
+    error!("error");
+    hexdump(efi_system_table);
+
     let mut vram = init_vram(efi_system_table).expect("init_vram failed");
     let vw = vram.width();
     let vh = vram.height();
@@ -46,6 +56,7 @@ fn efi_main(image_handle: EfiHandle, efi_system_table: &EfiSystemTable) {
 }
 
 #[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
+fn panic(info: &PanicInfo) -> ! {
+    error!("PANIC: {info:?}");
     exit_qemu(QemuExitCode::Fail)
 }
